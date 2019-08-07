@@ -1,4 +1,8 @@
 #pragma once
+
+#include <vector>
+#include <map>
+#include <string>
 using namespace std;
 
 #define   MAX_VARINT32_BYTES   5
@@ -8,7 +12,7 @@ using namespace std;
 #define   MAX_UINT32           4294967296
 
 
-size_t varint_pack(uint32_t value, uint8_t *out)
+size_t uint32_pack(uint32_t value, uint8_t *out)
 {
 	unsigned rv = 0;
 
@@ -33,7 +37,7 @@ size_t varint_pack(uint32_t value, uint8_t *out)
 	return rv;
 }
 
-size_t varint_pack(uint64_t value, uint8_t *out)
+size_t uint64_pack(uint64_t value, uint8_t *out)
 {
 	uint32_t hi = (uint32_t)(value >> 32);
 	uint32_t lo = (uint32_t)value;
@@ -62,7 +66,7 @@ size_t varint_pack(uint64_t value, uint8_t *out)
 	return rv;
 }
 
-size_t varint_size(uint32_t v)
+size_t uint32_size(uint32_t v)
 {
 	if (v < (1 << 7)) {
 		return 1;
@@ -81,7 +85,7 @@ size_t varint_size(uint32_t v)
 	}
 }
 
-size_t varint_size(uint64_t v)
+size_t uint64_size(uint64_t v)
 {
 	uint32_t upper_v = (uint32_t)(v >> 32);
 
@@ -108,7 +112,7 @@ size_t varint_size(uint64_t v)
 	}
 }
 
-size_t varint_unpack(const uint8_t * buffer, uint32_t * value)
+size_t uint32_unpack(const uint8_t * buffer, uint32_t * value)
 {
 	const uint8_t * ptr = buffer;
 
@@ -133,7 +137,7 @@ done:
 	return ptr - buffer;
 }
 
-size_t varint_unpack(const uint8_t *buf, uint64_t * value)
+size_t uint64_unpack(const uint8_t *buf, uint64_t * value)
 {
 	int      shift, n;
 	uint64_t x, c;
@@ -152,8 +156,7 @@ size_t varint_unpack(const uint8_t *buf, uint64_t * value)
 	return n;
 }
 
-inline uint32_t zigZag_encode(int32_t  n) { return (n << 1) ^ (n >> 31); }
-inline uint64_t zigZag_encode(int64_t  n) { return (n << 1) ^ (n >> 63); }
-inline int32_t  zigZag_decode(uint32_t n) { return (n >> 1) ^ -(int32_t)(n & 1); }
-inline int64_t  zigZag_decode(uint64_t n) { return (n >> 1) ^ -(int64_t)(n & 1); }
-
+inline uint32_t zigZag_encode32(int32_t  n) { return (n << 1) ^ (n >> 31); }
+inline uint64_t zigZag_encode64(int64_t  n) { return (n << 1) ^ (n >> 63); }
+inline int32_t  zigZag_decode32(uint32_t n) { return (n >> 1) ^ -(int32_t)(n & 1); }
+inline int64_t  zigZag_decode64(uint64_t n) { return (n >> 1) ^ -(int64_t)(n & 1); }

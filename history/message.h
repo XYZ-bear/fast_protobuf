@@ -1,18 +1,17 @@
 #pragma once
 
-#include "fast_protobuf.h"
+#include "proto_base4.h"
 
 
-MESSAGE_BEGIN(rigist)
+_____CLASS_BEGIN(rigist)
 NSM(int, tt, 1);
-END
+_____CLASS_END
 
-enum ennn
+enum class ennn
 {
 	type=-1
 };
-
-MESSAGE_BEGIN(login2)
+_____CLASS_BEGIN(login2)
 NSM(int32_t, i1, 1);
 NSM(int64_t, thh, 2);
 NSM(string, str, 3);
@@ -22,16 +21,7 @@ VECTOR(rigist, vvv, 6);
 NSM(double, dou, 7);
 NSM(bool, boo, 8);
 ENUM(ennn, ev, 9);
-END
-
-MESSAGE_BEGIN(login3)
-NSM(int32_t, i1, 1);
-NSM(int64_t, thh, 2);
-NSM(string, str, 3);
-NSM(rigist, ttt, 4);
-MAP(int, int, kkkk, 5);
-VECTOR(rigist, vvv, 6);
-END
+_____CLASS_END
 
 class funct {
 public:
