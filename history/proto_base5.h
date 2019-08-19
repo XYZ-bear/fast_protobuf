@@ -5,7 +5,7 @@
 #include <string>
 #include <stdarg.h>
 #include <functional>
-#include "varint2.h"
+#include "varint.h"
 using namespace std;
 
 typedef char uid_t;
@@ -20,7 +20,7 @@ typedef char uid_t;
 #define MODE_NO 3
 
 #define  PROPERTY_PRIVATE
-
+ 
 #ifdef PROPERTY_PRIVATE
 //NSM = number + string + message
 #define NSM(TYPE,name,id,...) \
@@ -35,16 +35,23 @@ typedef char uid_t;
 #define ENUM(TYPE,name,id,...) \
 						private:\
 							 TYPE name;\
-protected:\
 							 void set_##id(){set_enum_field<TYPE>(&name,id);}\
 						public:\
 							 void set_##name(TYPE val){ name=val;}\
 							 TYPE &get_##name(){return name;}
 
+#define FIXED(TYPE,name,id,...) \
+						private:\
+							 TYPE fixed_##name;\
+							 TYPE::value_type name;\
+							 void set_##id(){set_fixed_field<TYPE::value_type,TYPE>(id,&name,&fixed_##name);}\
+						public:\
+							 void set_##name(TYPE::value_type val){ name=val;}\
+							 TYPE::value_type &get_##name(){return name;}
+
 #define VECTOR(TYPE,name,id,...) \
 						private:\
 							 vector<TYPE> name;\
-protected:\
 							 void set_##id(){set_vector_field<TYPE>(id,&name);}\
 						public:\
 							 void add_##name(TYPE &val){name.push_back(val);}\
@@ -53,7 +60,6 @@ protected:\
 #define MAP(KEY_TYPE,VAL_TYPE,name,id,...) \
 						private:\
 							 map<KEY_TYPE,VAL_TYPE> name;\
-protected:\
 							 void set_##id(){set_map_field<KEY_TYPE,VAL_TYPE>(id,&name);}\
 						public:\
 							 void add_##name(KEY_TYPE key,VAL_TYPE val){name[key]=val;}\
@@ -88,8 +94,9 @@ protected:\
 #define MESSAGE_BEGIN(class_name,...)\
 class class_name:public proto_base{\
 public:\
-class_name(){DO_PRE_SET();}\
+class_name(){}\
 class_name(const class_name & c){*this=c;DO_PRE_SET();}\
+static class_name &instance(){static class_name entity;entity.refresh();return entity;}
 
 #define END };
 
@@ -161,6 +168,20 @@ enum WireType
 	WireType_Length_Limited = 3,
 };
 
+struct fixed32
+{
+	typedef uint32_t value_type;
+	uint32_t *data;
+	WireType type = WireType_Fix32;
+};
+
+struct fixed64
+{
+	typedef uint64_t value_type;
+	uint64_t *data;
+	WireType type = WireType_Fix64;
+};
+
 class proto_base;
 
 class field_base {
@@ -169,6 +190,7 @@ public:
 	virtual size_t unserialize(const unsigned char *begin, const unsigned char *end) = 0;
 	virtual size_t size() = 0;
 	virtual bool   is_default() = 0;
+	virtual void   refresh() = 0;
 	WireType type;
 };
 
@@ -204,16 +226,18 @@ public:
 		return varint_pack(zigZag_encode(*(int32_t*)data), dest);
 	}
 	inline static size_t serialize_(int32_t *data, unsigned char *dest, unsigned char *end) {
-		OVERFLOW_CHECK(dest, end, varint_size(zigZag_encode(*data)));
-		return varint_pack(zigZag_encode(*data), dest);
+		uint32_t zig = zigZag_encode(*data);
+		OVERFLOW_CHECK(dest, end, varint_size(zig));
+		return varint_pack(zig, dest);
 	}
 	inline static size_t serialize_(uint64_t *data, unsigned char *dest, unsigned char *end) {
 		OVERFLOW_CHECK(dest, end, varint_size(*data));
 		return varint_pack(*data, dest);
 	}
 	inline static size_t serialize_(int64_t *data, unsigned char *dest, unsigned char *end) {
-		OVERFLOW_CHECK(dest, end, varint_size(zigZag_encode(*data)));
-		return varint_pack(zigZag_encode(*data), dest);
+		uint64_t zig = zigZag_encode(*data);
+		OVERFLOW_CHECK(dest, end, varint_size(zig));
+		return varint_pack(zig, dest);
 	}
 	inline static size_t serialize_(string *data, unsigned char *dest, unsigned char *end) {
 		unsigned char *next = dest;
@@ -232,6 +256,16 @@ public:
 	inline static size_t serialize_(float *data, unsigned char *dest, unsigned char *end) {
 		OVERFLOW_CHECK(dest, end, SIZE_4_BYTE);
 		memcpy(dest, data, SIZE_4_BYTE);
+		return SIZE_4_BYTE;
+	}
+	inline static size_t serialize_(fixed64 *data, unsigned char *dest, unsigned char *end) {
+		OVERFLOW_CHECK(dest, end, SIZE_8_BYTE);
+		memcpy(dest, data->data, SIZE_8_BYTE);
+		return SIZE_8_BYTE;
+	}
+	inline static size_t serialize_(fixed32 *data, unsigned char *dest, unsigned char *end) {
+		OVERFLOW_CHECK(dest, end, SIZE_4_BYTE);
+		memcpy(dest, data->data, SIZE_4_BYTE);
 		return SIZE_4_BYTE;
 	}
 	inline static size_t serialize_(proto_base *data, unsigned char *dest, unsigned char *end) {
@@ -338,6 +372,17 @@ public:
 		memcpy(data, dest, SIZE_4_BYTE);
 		return SIZE_4_BYTE;
 	}
+	inline static size_t unserialize_(fixed64 *data, const unsigned char *dest, const unsigned char *end) {
+		OVERFLOW_CHECK(dest, end, SIZE_8_BYTE);
+		memcpy(data->data, dest, SIZE_8_BYTE);
+
+		return SIZE_8_BYTE;
+	}
+	inline static size_t unserialize_(fixed32 *data, const unsigned char *dest, const unsigned char *end) {
+		OVERFLOW_CHECK(dest, end, SIZE_4_BYTE);
+		memcpy(data->data, dest, SIZE_4_BYTE);
+		return SIZE_4_BYTE;
+	}
 	inline static size_t unserialize_(proto_base *data, const unsigned char *dest, const unsigned char *end) {
 		return data->unserialize(dest, end - dest);
 	}
@@ -348,11 +393,12 @@ public:
 		next += varint_unpack(next, &len);
 		const unsigned char *last = next + len;
 		data->resize(len);
+		//data->reserve(len);
 		size_t index = 0;
 		while (next < last) {
 			next += proto_field<T1>::unserialize_(&(*data)[index++], next, end);
 		}
-		data->resize(index);
+		data->reserve(index);
 		return next - dest;
 	}
 	inline static size_t unserialize_(map<T1, T2> *data, const unsigned char *dest, const unsigned char *end) {
@@ -410,6 +456,12 @@ public:
 		return SIZE_8_BYTE;
 	}
 	inline static size_t size_(float *data) {
+		return SIZE_4_BYTE;
+	}
+	inline static size_t size_(fixed64 *data) {
+		return SIZE_8_BYTE;
+	}
+	inline static size_t size_(fixed32 *data) {
 		return SIZE_4_BYTE;
 	}
 	inline static size_t size_(proto_base *data) {
@@ -471,6 +523,14 @@ public:
 	inline static bool is_default_(float *data) {
 		CHECK_DEFAULT(*data, 0);
 	}
+	inline static bool is_default_(fixed32 *data) {
+		CHECK_DEFAULT(*(data->data), 0);
+		return false;
+	}
+	inline static bool is_default_(fixed64 *data) {
+		CHECK_DEFAULT(*(data->data), 0);
+		return false;
+	}
 	inline static bool is_default_(proto_base *data) {
 		CHECK_DEFAULT(data->size(), 0);
 	}
@@ -482,6 +542,60 @@ public:
 	}
 #pragma endregion
 
+
+#pragma region refresh
+	inline static void refresh_(bool *data) {
+		*data= false;
+	}
+	inline static void refresh_(uint8_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(uint16_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(uint32_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(int8_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(int16_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(int32_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(uint64_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(int64_t *data) {
+		*data = 0;
+	}
+	inline static void refresh_(string *data) {
+		data->clear();
+	}
+	inline static void refresh_(double *data) {
+		*data = 0;
+	}
+	inline static void refresh_(float *data) {
+		*data = 0;
+	}
+	inline static void refresh_(fixed32 *data) {
+		*(data->data) = 0;
+	}
+	inline static void refresh_(fixed64 *data) {
+		*(data->data) = 0;
+	}
+	inline static void refresh_(proto_base *data) {
+		data->refresh();
+	}
+	inline static void refresh_(vector<T1> *data) {
+		data->clear();
+	}
+	inline static void refresh_(map<T1, T2> *data) {
+		data->clear();
+	}
+#pragma endregion
 public:
 	size_t serialize(unsigned char *begin, unsigned char *end) {
 		return serialize_(data_, begin, end);
@@ -498,6 +612,9 @@ public:
 	void set_data(Container *data) {
 		data_ = data;
 	}
+	void refresh() {
+		refresh_(data_);
+	}
 private:
 	Container * data_;
 };
@@ -508,9 +625,9 @@ class proto_base
 {
 public:
 	~proto_base() {
-		for (auto field : proto_fields_) {
-			delete field;
-		}
+		//for (auto field : proto_fields_) {
+		//	delete field;
+		//}
 	}
 
 	//顶层值拷贝，meta信息保留，不进行拷贝
@@ -567,6 +684,15 @@ protected:
 		proto_field<T1, T2, Contianer> *pb = new proto_field<T1, T2, Contianer>;
 		pb->set_data(a);
 		pb->type = WireType_Length_Limited;
+		proto_fields_.push_back(pb);
+	}
+
+	template<class T,class Contianer>
+	void set_fixed_field(uid_t id,T *a, Contianer *con, bool isrequird = false, bool enable = true) {
+		proto_field<T, T, Contianer> *pb = new proto_field<T, T, Contianer>;
+		con->data = a;
+		pb->set_data(con);
+		pb->type = con->type;
 		proto_fields_.push_back(pb);
 	}
 
@@ -789,6 +915,13 @@ public:
 		}
 		return 0;
 	}
+
+	void refresh() {
+		for (auto &field : proto_fields_) {
+			field->refresh();
+		}
+	}
+
 	size_t size() {
 		size_t size = 0;
 
