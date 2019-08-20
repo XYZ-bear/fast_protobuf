@@ -5,7 +5,7 @@
 #include <string>
 #include <stdarg.h>
 #include <functional>
-#include "varint.h"
+#include "varint2.h"
 using namespace std;
 
 typedef char uid_t;
@@ -25,57 +25,55 @@ typedef char uid_t;
 //NSM = number + string + message
 #define NSM(TYPE,name,id,...) \
 						private:\
-							 proto_field<TYPE> pb_##id;\
 							 TYPE name;\
-						protected:\
-							 size_t serialize_##id(){};
-							 void set_##id(){set_field<TYPE>(&name,id,&pb_##id);}\
-							 field_base* get_##id(){return &pb_##id;}\
+						public:\
+							 size_t serialize_##id(){return proto_field<TYPE>::serialize_(&name, next, end);};\
+							 size_t unserialize_##id(){return proto_field<TYPE>::unserialize_(&name, unnext, unend);};\
 						public:\
 							 void set_##name(TYPE name_v){ name=name_v;}\
 							 TYPE &get_##name(){return name;}
 
 #define ENUM(TYPE,name,id,...) \
 						private:\
-							 proto_field<int64_t> pb_##id;\
 							 TYPE name;\
-							 void set_##id(){set_enum_field<TYPE>(&name,id);}\
-                             field_base* get_##id(){return &pb_##id;}\
+						public:\
+							 size_t serialize_##id(){return proto_field<int64_t>::serialize_(&name, next, end);};\
+							 size_t unserialize_##id(){return proto_field<int64_t>::unserialize_(&name, unnext, unend);};\
 						public:\
 							 void set_##name(TYPE val){ name=val;}\
 							 TYPE &get_##name(){return name;}
 
 #define FIXED(TYPE,name,id,...) \
 						private:\
-							 proto_field<TYPE::value_type, TYPE::value_type, TYPE> pb_##id;\
-							 TYPE fixed_##name;\
 							 TYPE::value_type name;\
-							 void set_##id(){set_fixed_field<TYPE::value_type,TYPE>(id,&name,&fixed_##name,&pb_##id);}\
-							 field_base* get_##id(){return &pb_##id;}\
+						public:\
+							 size_t serialize_##id(){return proto_field<TYPE>::serialize_(&name, next, end);};\
+							 size_t unserialize_##id(){return proto_field<TYPE>::unserialize_(&name, unnext, unend);};\
 						public:\
 							 void set_##name(TYPE::value_type val){ name=val;}\
 							 TYPE::value_type &get_##name(){return name;}
 
 #define VECTOR(TYPE,name,id,...) \
 						private:\
-							 proto_field<TYPE, TYPE, vector<TYPE>> pb_##id;\
 							 vector<TYPE> name;\
-							 void set_##id(){set_vector_field<TYPE>(id,&name,&pb_##id);}\
-							 field_base* get_##id(){return &pb_##id;}\
+						public:\
+							 size_t serialize_##id(){return proto_field<TYPE,TYPE,vector<TYPE>>::serialize_(&name, next, end);};\
+							 size_t unserialize_##id(){return proto_field<TYPE,TYPE,vector<TYPE>>::unserialize_(&name, unnext, unend);};\
 						public:\
 							 void add_##name(TYPE &val){name.push_back(val);}\
 							 vector<TYPE> &get_##name(){return name;};\
 
 #define MAP(KEY_TYPE,VAL_TYPE,name,id,...) \
 						private:\
-							 proto_field<KEY_TYPE, VAL_TYPE, map<KEY_TYPE,VAL_TYPE>> pb_##id;\
 							 map<KEY_TYPE,VAL_TYPE> name;\
-							 void set_##id(){set_map_field<KEY_TYPE,VAL_TYPE>(id,&name);}\
-							 field_base* get_##id(){return &pb_##id;}\
+						public:\
+							 size_t serialize_##id(){return proto_field<KEY_TYPE,VAL_TYPE,map<KEY_TYPE,VAL_TYPE>>::serialize_(&name, next, end);};\
+							 size_t unserialize_##id(){return proto_field<KEY_TYPE,VAL_TYPE,map<KEY_TYPE,VAL_TYPE>>::unserialize_(&name, unnext, unend);};\
 						public:\
 							 void add_##name(KEY_TYPE key,VAL_TYPE val){name[key]=val;}\
 							 map<KEY_TYPE,VAL_TYPE> &get_##name(){return name;}\
 							 VAL_TYPE &get_##name(KEY_TYPE key){return name[key];}
+
 #else
 #define NSM(TYPE,name,id,...) \
 						public:\
@@ -103,19 +101,18 @@ typedef char uid_t;
 #endif
 
 #define MESSAGE_BEGIN(class_name,...)\
-class class_name:public proto_base{\
-public:\
-class_name(){DO_PRE_SET();}\
-class_name(const class_name & c){*this=c;DO_PRE_SET();}\
-static class_name &instance(){static class_name entity;entity.refresh();return entity;}
+	class class_name:public proto_base<class_name>\
 
-#define END };
 
 #define OVERFLOW_CHECK(begin,end,size) if ((begin+size) > end) return 0;
 
 #define CHECK_DEFAULT(data,default_value) if(data==default_value) return true;else return false;
 
 #define BIT8(name) uint8_t name[8] = { 0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01 };
+
+#define SERIALISE(entity,data,size) entity.serialize(&entity,data, size)
+
+#define UNSERIALISE(entity,data,size) entity.unserialize(&entity,data, size)
 
 #define DEFINE_ALL_PRE_SET()\
 virtual void set_1() {};virtual void set_2() {};virtual void set_3() {};virtual void set_4() {};\
@@ -183,12 +180,23 @@ virtual size_t serialize_5(){return 0;};virtual size_t serialize_6(){return 0;};
 virtual size_t serialize_9(){return 0;};virtual size_t serialize_10(){return 0;};virtual size_t serialize_11(){return 0;};virtual size_t serialize_12(){return 0;};\
 virtual size_t serialize_13(){return 0;};virtual size_t serialize_14(){return 0;};virtual size_t serialize_15(){return 0;};virtual size_t serialize_16(){return 0;};
 
+#define DEFINE_ALL_PRE_UNSERIALIZE()\
+virtual size_t unserialize_1(){return 0;};virtual size_t unserialize_2(){return 0;};virtual size_t unserialize_3(){return 0;};virtual size_t unserialize_4(){return 0;};\
+virtual size_t unserialize_5(){return 0;};virtual size_t unserialize_6(){return 0;};virtual size_t unserialize_7(){return 0;};virtual size_t unserialize_8(){return 0;};\
+virtual size_t unserialize_9(){return 0;};virtual size_t unserialize_10(){return 0;};virtual size_t unserialize_11(){return 0;};virtual size_t unserialize_12(){return 0;};\
+virtual size_t unserialize_13(){return 0;};virtual size_t unserialize_14(){return 0;};virtual size_t unserialize_15(){return 0;};virtual size_t unserialize_16(){return 0;};
 
-#define IMPL_SERIALIZE()\
-next+=serialize_1();next+=serialize_2();next+=serialize_3();next+=serialize_4();\
-next+=serialize_5();next+=serialize_6();next+=serialize_7();next+=serialize_8();\
-next+=serialize_9();next+=serialize_10();next+=serialize_11();next+=serialize_12();\
-next+=serialize_13();next+=serialize_14();next+=serialize_15();next+=serialize_16();
+#define IMPL_SERIALIZE(entity)\
+next+=entity->serialize_1();next+=entity->serialize_2();next+=entity->serialize_3();next+=entity->serialize_4();\
+next+=entity->serialize_5();next+=entity->serialize_6();next+=entity->serialize_7();next+=entity->serialize_8();\
+next+=entity->serialize_9();next+=entity->serialize_10();next+=entity->serialize_11();next+=entity->serialize_12();\
+next+=entity->serialize_13();next+=entity->serialize_14();next+=entity->serialize_15();next+=entity->serialize_16();
+
+#define IMPL_UNSERIALIZE(entity)\
+unnext+=entity->unserialize_1();unnext+=entity->unserialize_2();unnext+=entity->unserialize_3();unnext+=entity->unserialize_4();\
+unnext+=entity->unserialize_5();unnext+=entity->unserialize_6();unnext+=entity->unserialize_7();unnext+=entity->unserialize_8();\
+unnext+=entity->unserialize_9();unnext+=entity->unserialize_10();unnext+=entity->unserialize_11();unnext+=entity->unserialize_12();\
+unnext+=entity->unserialize_13();unnext+=entity->unserialize_14();unnext+=entity->unserialize_15();unnext+=entity->unserialize_16();
 
 enum WireType
 {
@@ -212,6 +220,7 @@ struct fixed64
 	WireType type = WireType_Fix64;
 };
 
+template<class T>
 class proto_base;
 
 class field_base {
@@ -298,8 +307,8 @@ public:
 		memcpy(dest, data->data, SIZE_4_BYTE);
 		return SIZE_4_BYTE;
 	}
-	inline static size_t serialize_(proto_base *data, unsigned char *dest, unsigned char *end) {
-		return data->serialize(dest, end - dest);
+	inline static size_t serialize_(proto_base<T1> *data, unsigned char *dest, unsigned char *end) {
+		return data->serialize((T1*)data,dest, end - dest);
 	}
 	inline static size_t serialize_(vector<T1> *data, unsigned char *dest, unsigned char *end) {
 		size_t size = 0;
@@ -405,7 +414,6 @@ public:
 	inline static size_t unserialize_(fixed64 *data, const unsigned char *dest, const unsigned char *end) {
 		OVERFLOW_CHECK(dest, end, SIZE_8_BYTE);
 		memcpy(data->data, dest, SIZE_8_BYTE);
-
 		return SIZE_8_BYTE;
 	}
 	inline static size_t unserialize_(fixed32 *data, const unsigned char *dest, const unsigned char *end) {
@@ -413,8 +421,8 @@ public:
 		memcpy(data->data, dest, SIZE_4_BYTE);
 		return SIZE_4_BYTE;
 	}
-	inline static size_t unserialize_(proto_base *data, const unsigned char *dest, const unsigned char *end) {
-		return data->unserialize(dest, end - dest);
+	inline static size_t unserialize_(proto_base<T1> *data, const unsigned char *dest, const unsigned char *end) {
+		return data->unserialize((T1*)data,dest, end - dest);
 	}
 	inline static size_t unserialize_(vector<T1> *data, const unsigned char *dest, const unsigned char *end) {
 		OVERFLOW_CHECK(dest, end, varint_scan(dest));
@@ -494,7 +502,7 @@ public:
 	inline static size_t size_(fixed32 *data) {
 		return SIZE_4_BYTE;
 	}
-	inline static size_t size_(proto_base *data) {
+	inline static size_t size_(proto_base<T1> *data) {
 		return data->size();
 	}
 	inline static size_t size_(vector<T1> *data) {
@@ -561,7 +569,7 @@ public:
 		CHECK_DEFAULT(*(data->data), 0);
 		return false;
 	}
-	inline static bool is_default_(proto_base *data) {
+	inline static bool is_default_(proto_base<T1> *data) {
 		CHECK_DEFAULT(data->size(), 0);
 	}
 	inline static bool is_default_(vector<T1> *data) {
@@ -616,7 +624,7 @@ public:
 	inline static void refresh_(fixed64 *data) {
 		*(data->data) = 0;
 	}
-	inline static void refresh_(proto_base *data) {
+	inline static void refresh_(proto_base<T1> *data) {
 		data->refresh();
 	}
 	inline static void refresh_(vector<T1> *data) {
@@ -650,7 +658,7 @@ private:
 };
 
 
-
+template<class T>
 class proto_base
 {
 public:
@@ -665,311 +673,336 @@ public:
 	}
 
 protected:
-	template<class T1>
-	static WireType get_nsm_type() {
-		if (typeid(T1) == typeid(float))
-			return WireType_Fix32;
-		else if (typeid(T1) == typeid(double))
-			return WireType_Fix64;
-		else if (typeid(T1) == typeid(string))
-			return WireType_Length_Limited;
-		else
-			return WireType_Varint;
-	}
+	//template<class T1>
+	//static WireType get_nsm_type() {
+	//	if (typeid(T1) == typeid(float))
+	//		return WireType_Fix32;
+	//	else if (typeid(T1) == typeid(double))
+	//		return WireType_Fix64;
+	//	else if (typeid(T1) == typeid(string))
+	//		return WireType_Length_Limited;
+	//	else
+	//		return WireType_Varint;
+	//}
 
-	template<class T,class F=proto_field<T>>
-	void set_field(T *a, uid_t id, F *pb) {
-		//proto_field<T> *pb2 = new proto_field<T>;
-		pb->set_data(a);
-		pb->type = get_nsm_type<T>();
-		//proto_fields_.push_back(pb);
-	}
+	//template<class T,class F=proto_field<T>>
+	//void set_field(T *a, uid_t id, F *pb) {
+	//	//proto_field<T> *pb2 = new proto_field<T>;
+	//	pb->set_data(a);
+	//	pb->type = get_nsm_type<T>();
+	//	//proto_fields_.push_back(pb);
+	//}
 
-	template<class T, class F = proto_field<T>>
-	void set_enum_field(T *a, uid_t id,F *pb) {
-		//if (sizeof(T) <= SIZE_4_BYTE) {
-		//	proto_field<int32_t> *pb = new proto_field<int32_t>;
-		//	pb->set_data((int32_t*)a);
-		//	pb->type = WireType_Varint;
-		//	proto_fields_.push_back(pb);
-		//}
-		//else {
-		//	proto_field<int64_t> *pb = new proto_field<int64_t>;
-		//	pb->set_data((int64_t*)a);
-		//	pb->type = WireType_Varint;
-		//	proto_fields_.push_back(pb);
-		//}
-			pb->set_data((int64_t*)a);
-			pb->type = WireType_Varint;
-			//proto_fields_.push_back(pb);
-	}
+	//template<class T, class F = proto_field<T>>
+	//void set_enum_field(T *a, uid_t id,F *pb) {
+	//	//if (sizeof(T) <= SIZE_4_BYTE) {
+	//	//	proto_field<int32_t> *pb = new proto_field<int32_t>;
+	//	//	pb->set_data((int32_t*)a);
+	//	//	pb->type = WireType_Varint;
+	//	//	proto_fields_.push_back(pb);
+	//	//}
+	//	//else {
+	//	//	proto_field<int64_t> *pb = new proto_field<int64_t>;
+	//	//	pb->set_data((int64_t*)a);
+	//	//	pb->type = WireType_Varint;
+	//	//	proto_fields_.push_back(pb);
+	//	//}
+	//		pb->set_data((int64_t*)a);
+	//		pb->type = WireType_Varint;
+	//		//proto_fields_.push_back(pb);
+	//}
 
-	template< class T, class Contianer = vector<T>,class F= proto_field<T, T, Contianer>>
-	void set_vector_field(uid_t id, Contianer *a, F *pb) {
-		//proto_field<T, T, Contianer> *pb = new proto_field<T, T, Contianer>;
-		pb->set_data(a);
-		pb->type = WireType_Length_Limited;
-		//proto_fields_.push_back(pb);
-	}
+	//template< class T, class Contianer = vector<T>,class F= proto_field<T, T, Contianer>>
+	//void set_vector_field(uid_t id, Contianer *a, F *pb) {
+	//	//proto_field<T, T, Contianer> *pb = new proto_field<T, T, Contianer>;
+	//	pb->set_data(a);
+	//	pb->type = WireType_Length_Limited;
+	//	//proto_fields_.push_back(pb);
+	//}
 
-	template<class T1, class T2, class Contianer = map<T1, T2>>
-	void set_map_field(uid_t id, Contianer *a, bool isrequird = false, bool enable = true) {
-		proto_field<T1, T2, Contianer> *pb = new proto_field<T1, T2, Contianer>;
-		pb->set_data(a);
-		pb->type = WireType_Length_Limited;
-		//proto_fields_.push_back(pb);
-	}
+	//template<class T1, class T2, class Contianer = map<T1, T2>>
+	//void set_map_field(uid_t id, Contianer *a, bool isrequird = false, bool enable = true) {
+	//	proto_field<T1, T2, Contianer> *pb = new proto_field<T1, T2, Contianer>;
+	//	pb->set_data(a);
+	//	pb->type = WireType_Length_Limited;
+	//	//proto_fields_.push_back(pb);
+	//}
 
-	template<class T, class Contianer,class F= proto_field<T, T, Contianer>>
-	void set_fixed_field(uid_t id, T *a, Contianer *con, F *pb) {
-		//proto_field<T, T, Contianer> *pb = new proto_field<T, T, Contianer>;
-		con->data = a;
-		pb->set_data(con);
-		pb->type = con->type;
-		///proto_fields_.push_back(pb);
-	}
+	//template<class T, class Contianer,class F= proto_field<T, T, Contianer>>
+	//void set_fixed_field(uid_t id, T *a, Contianer *con, F *pb) {
+	//	//proto_field<T, T, Contianer> *pb = new proto_field<T, T, Contianer>;
+	//	con->data = a;
+	//	pb->set_data(con);
+	//	pb->type = con->type;
+	//	///proto_fields_.push_back(pb);
+	//}
 
-	DEFINE_ALL_PRE_SET()
-	DEFINE_ALL_PRE_GET()
-private:
-#pragma region Mode_no
-
-	size_t unserialize_(const unsigned char *val, size_t size) {
-		const unsigned char*next = val;
-		const unsigned char*end = val + size;
-#ifdef _DEBUG
-		for (auto &field : proto_fields_) {
-			if (size_t t_size = field->unserialize(next, end))
-				next += t_size;
-			else
-				return 0;
-		}
-#else
-		for (auto iter = proto_fields_.begin(); iter != proto_fields_.end(); iter++)
-		{
-			if (size_t t_size = (*iter)->unserialize(next, end))
-				next += t_size;
-			else
-				return 0;
-		}
-#endif // DEBUG
-		return next - val;
-	}
-
-	size_t serialize_(unsigned char *dest, size_t size) {
-		unsigned char*next = dest;
-		unsigned char*end = dest + size;
-#ifdef _DEBUG
-		for (auto &field : proto_fields_) {
-			next += field->serialize(next, end);
-		}
-#else
-		for (auto iter = proto_fields_.begin(); iter != proto_fields_.end(); iter++) {
-			if (size_t t_size = (*iter)->serialize(next, end))
-				next += t_size;
-			else
-				return 0;
-		}
-#endif // DEBUG
-		return next - dest;
-	}
-
-#pragma endregion
-
-#pragma region Mode_id
-
-	size_t serialize_with_ids_(unsigned char *next, size_t size) {
-		size_t id_size = (proto_fields_.size() / SIZE_8_BYTE + 1);
-		unsigned char *end = next + size;
-		unsigned char *data_next = next + id_size;
-		OVERFLOW_CHECK(next, end, id_size);
-		BIT8(Bit_bit);
-		memset(next, 0, id_size);
-		size_t byte_index = 0, bit_index = 0;
-		for (size_t i = 0; i < proto_fields_.size(); i++) {
-			bit_index = i % SIZE_8_BYTE;
-			if (!proto_fields_[i]->is_default()) {
-				next[byte_index] |= Bit_bit[bit_index];
-				if (size_t t_s = proto_fields_[i]->serialize(data_next, end))
-					data_next += t_s;
-				else
-					return 0;
-			}
-			if (i != 0 && bit_index == 0) {
-				byte_index++;
-			}
-		}
-		return data_next - next;
-	}
-
-	size_t unserialize_with_ids_(const unsigned char *next, size_t size) {
-		size_t id_size = (proto_fields_.size() / SIZE_8_BYTE + 1);
-		const unsigned char *end = next + size;
-		const unsigned char *data_next = next + id_size;
-		OVERFLOW_CHECK(next, end, id_size);
-		BIT8(Bit_bit);
-		size_t byte_index = 0, bit_index = 0;
-		for (size_t i = 0; i < proto_fields_.size(); i++) {
-			bit_index = i % SIZE_8_BYTE;
-			if (next[byte_index] & Bit_bit[bit_index]) {
-				if (size_t t_s = proto_fields_[i]->unserialize(data_next, end))
-					data_next += t_s;
-				else
-					return 0;
-			}
-			if (i != 0 && bit_index == 0)
-				byte_index++;
-		}
-		return data_next - next;
-	}
-
-#pragma endregion
-
-#pragma region Mode_tag
-	size_t with_ids_size() {
-		size_t size = (proto_fields_.size() / SIZE_8_BYTE + 1);
-		for (size_t i = 0; i < proto_fields_.size(); i++) {
-			if (!proto_fields_[i]->is_default()) {
-				size += proto_fields_[i]->size();
-			}
-		}
-		return size;
-	}
-
-	size_t serialize_with_tag_(unsigned char *next, size_t size) {
-		size_t tag_size = (proto_fields_.size() / 2 + 1);
-		unsigned char *end = next + size;
-		unsigned char *data_next = next + tag_size;
-
-		OVERFLOW_CHECK(next, end, tag_size);
-		memset(next, 0, tag_size);
-		size_t byte_index = 0, tag_index = 0;
-		for (size_t i = 0; i < proto_fields_.size(); i++) {
-			tag_index = i % 2;
-			auto &field = proto_fields_[i];
-			if (i != 0 && tag_index == 0) {
-				byte_index++;
-			}
-			uint8_t tag = next[byte_index];
-			if (!field->is_default()) {
-				tag = ((tag << 4) | field->type) | 0x08;
-				next[byte_index] = tag;
-				if (size_t t_s = proto_fields_[i]->serialize(data_next, end))
-					data_next += t_s;
-				else
-					return 0;
-			}
-
-		}
-		return data_next - next;
-	}
-	size_t unserialize_with_tag_(const unsigned char *next, size_t size) {
-		size_t id_size = (proto_fields_.size() / 2 + 1);
-		const unsigned char *end = next + size;
-		const unsigned char *data_next = next + id_size;
-		OVERFLOW_CHECK(next, end, id_size);
-		size_t byte_index = 0, tag_index = 0;
-		uint8_t tag = 0;
-		WireType type;
-		for (size_t i = 0; i < proto_fields_.size(); i++) {
-			tag_index = i % 2;
-			auto &field = proto_fields_[i];
-
-			if (i != 0 && tag_index == 0) {
-				byte_index++;
-			}
-
-			if (tag_index == 0)
-				tag = next[byte_index];
-
-			auto t_tag = tag >> 4;
-			if (t_tag & 0x08) {
-				type = (WireType)(t_tag ^ 0x08);
-				if (field->type == type) {
-					if (size_t t_s = field->unserialize(data_next, end))
-						data_next += t_s;
-					else
-						return 0;
-				}
-				else {
-					if (type == WireType_Varint) {
-						data_next += varint_scan(data_next);
-					}
-					else if (type == WireType_Fix32) {
-						data_next += SIZE_4_BYTE;
-					}
-					else if (type == WireType_Fix64) {
-						data_next += SIZE_8_BYTE;
-					}
-					else {
-						size_t len = 0;
-						data_next += varint_unpack(data_next, &len);
-						data_next += len;
-					}
-				}
-			}
-			tag = tag << 4;
-		}
-		return data_next - next;
-	}
-
-#pragma endregion
+	DEFINE_ALL_PRE_SERIALIZE()
+	DEFINE_ALL_PRE_UNSERIALIZE()
+//private:
+//#pragma region Mode_no
+//
+//	size_t unserialize_(const unsigned char *val, size_t size) {
+//		const unsigned char*next = val;
+//		const unsigned char*end = val + size;
+//#ifdef _DEBUG
+//		for (auto &field : proto_fields_) {
+//			if (size_t t_size = field->unserialize(next, end))
+//				next += t_size;
+//			else
+//				return 0;
+//		}
+//#else
+//		for (auto iter = proto_fields_.begin(); iter != proto_fields_.end(); iter++)
+//		{
+//			if (size_t t_size = (*iter)->unserialize(next, end))
+//				next += t_size;
+//			else
+//				return 0;
+//		}
+//#endif // DEBUG
+//		return next - val;
+//	}
+//
+//	size_t serialize_(unsigned char *dest, size_t size) {
+//		unsigned char*next = dest;
+//		unsigned char*end = dest + size;
+//#ifdef _DEBUG
+//		for (auto &field : proto_fields_) {
+//			next += field->serialize(next, end);
+//		}
+//#else
+//		for (auto iter = proto_fields_.begin(); iter != proto_fields_.end(); iter++) {
+//			if (size_t t_size = (*iter)->serialize(next, end))
+//				next += t_size;
+//			else
+//				return 0;
+//		}
+//#endif // DEBUG
+//		return next - dest;
+//	}
+//
+//#pragma endregion
+//
+//#pragma region Mode_id
+//
+//	size_t serialize_with_ids_(unsigned char *next, size_t size) {
+//		size_t id_size = (proto_fields_.size() / SIZE_8_BYTE + 1);
+//		unsigned char *end = next + size;
+//		unsigned char *data_next = next + id_size;
+//		OVERFLOW_CHECK(next, end, id_size);
+//		BIT8(Bit_bit);
+//		memset(next, 0, id_size);
+//		size_t byte_index = 0, bit_index = 0;
+//		for (size_t i = 0; i < proto_fields_.size(); i++) {
+//			bit_index = i % SIZE_8_BYTE;
+//			if (!proto_fields_[i]->is_default()) {
+//				next[byte_index] |= Bit_bit[bit_index];
+//				if (size_t t_s = proto_fields_[i]->serialize(data_next, end))
+//					data_next += t_s;
+//				else
+//					return 0;
+//			}
+//			if (i != 0 && bit_index == 0) {
+//				byte_index++;
+//			}
+//		}
+//		return data_next - next;
+//	}
+//
+//	size_t unserialize_with_ids_(const unsigned char *next, size_t size) {
+//		size_t id_size = (proto_fields_.size() / SIZE_8_BYTE + 1);
+//		const unsigned char *end = next + size;
+//		const unsigned char *data_next = next + id_size;
+//		OVERFLOW_CHECK(next, end, id_size);
+//		BIT8(Bit_bit);
+//		size_t byte_index = 0, bit_index = 0;
+//		for (size_t i = 0; i < proto_fields_.size(); i++) {
+//			bit_index = i % SIZE_8_BYTE;
+//			if (next[byte_index] & Bit_bit[bit_index]) {
+//				if (size_t t_s = proto_fields_[i]->unserialize(data_next, end))
+//					data_next += t_s;
+//				else
+//					return 0;
+//			}
+//			if (i != 0 && bit_index == 0)
+//				byte_index++;
+//		}
+//		return data_next - next;
+//	}
+//
+//#pragma endregion
+//
+//#pragma region Mode_tag
+//	size_t with_ids_size() {
+//		size_t size = (proto_fields_.size() / SIZE_8_BYTE + 1);
+//		for (size_t i = 0; i < proto_fields_.size(); i++) {
+//			if (!proto_fields_[i]->is_default()) {
+//				size += proto_fields_[i]->size();
+//			}
+//		}
+//		return size;
+//	}
+//
+//	size_t serialize_with_tag_(unsigned char *next, size_t size) {
+//		size_t tag_size = (proto_fields_.size() / 2 + 1);
+//		unsigned char *end = next + size;
+//		unsigned char *data_next = next + tag_size;
+//
+//		OVERFLOW_CHECK(next, end, tag_size);
+//		memset(next, 0, tag_size);
+//		size_t byte_index = 0, tag_index = 0;
+//		for (size_t i = 0; i < proto_fields_.size(); i++) {
+//			tag_index = i % 2;
+//			auto &field = proto_fields_[i];
+//			if (i != 0 && tag_index == 0) {
+//				byte_index++;
+//			}
+//			uint8_t tag = next[byte_index];
+//			if (!field->is_default()) {
+//				tag = ((tag << 4) | field->type) | 0x08;
+//				next[byte_index] = tag;
+//				if (size_t t_s = proto_fields_[i]->serialize(data_next, end))
+//					data_next += t_s;
+//				else
+//					return 0;
+//			}
+//
+//		}
+//		return data_next - next;
+//	}
+//	size_t unserialize_with_tag_(const unsigned char *next, size_t size) {
+//		size_t id_size = (proto_fields_.size() / 2 + 1);
+//		const unsigned char *end = next + size;
+//		const unsigned char *data_next = next + id_size;
+//		OVERFLOW_CHECK(next, end, id_size);
+//		size_t byte_index = 0, tag_index = 0;
+//		uint8_t tag = 0;
+//		WireType type;
+//		for (size_t i = 0; i < proto_fields_.size(); i++) {
+//			tag_index = i % 2;
+//			auto &field = proto_fields_[i];
+//
+//			if (i != 0 && tag_index == 0) {
+//				byte_index++;
+//			}
+//
+//			if (tag_index == 0)
+//				tag = next[byte_index];
+//
+//			auto t_tag = tag >> 4;
+//			if (t_tag & 0x08) {
+//				type = (WireType)(t_tag ^ 0x08);
+//				if (field->type == type) {
+//					if (size_t t_s = field->unserialize(data_next, end))
+//						data_next += t_s;
+//					else
+//						return 0;
+//				}
+//				else {
+//					if (type == WireType_Varint) {
+//						data_next += varint_scan(data_next);
+//					}
+//					else if (type == WireType_Fix32) {
+//						data_next += SIZE_4_BYTE;
+//					}
+//					else if (type == WireType_Fix64) {
+//						data_next += SIZE_8_BYTE;
+//					}
+//					else {
+//						size_t len = 0;
+//						data_next += varint_unpack(data_next, &len);
+//						data_next += len;
+//					}
+//				}
+//			}
+//			tag = tag << 4;
+//		}
+//		return data_next - next;
+//	}
+//
+//#pragma endregion
+//public:
+//	size_t serialize(unsigned char *next, size_t size, uint8_t mode = MODE_NO) {
+//		switch (mode)
+//		{
+//		case MODE_NO: {
+//			return serialize_(next, size);
+//		}break;
+//		case MODE_ID: {
+//			return serialize_with_ids_(next, size);
+//		}break;
+//		case MODE_TAG: {
+//			return serialize_with_tag_(next, size);
+//		}break;
+//		default:
+//			break;
+//		}
+//		return 0;
+//	}
+//	size_t unserialize(const unsigned char *next, size_t size, uint8_t mode = MODE_NO) {
+//		switch (mode)
+//		{
+//		case MODE_NO: {
+//			return unserialize_(next, size);
+//		}break;
+//		case MODE_ID: {
+//			return unserialize_with_ids_(next, size);
+//		}break;
+//		case MODE_TAG: {
+//			return unserialize_with_tag_(next, size);
+//		}break;
+//		default:
+//			break;
+//		}
+//		return 0;
+//	}
+//
+//	void refresh() {
+//		for (auto &field : proto_fields_) {
+//			field->refresh();
+//		}
+//	}
+//
+//	size_t size() {
+//		size_t size = 0;
+//
+//#ifdef _DEBUG
+//		for (auto &field : proto_fields_) {
+//			size += field->size();
+//		}
+//#else
+//		for (auto iter = proto_fields_.begin(); iter != proto_fields_.end(); iter++) {
+//			size += (*iter)->size();
+//		}
+//#endif // DEBUG
+//		return size;
+//	}
+//private:
+//	vector<field_base*> proto_fields_;
 public:
-	size_t serialize(unsigned char *next, size_t size, uint8_t mode = MODE_NO) {
-		switch (mode)
-		{
-		case MODE_NO: {
-			return serialize_(next, size);
-		}break;
-		case MODE_ID: {
-			return serialize_with_ids_(next, size);
-		}break;
-		case MODE_TAG: {
-			return serialize_with_tag_(next, size);
-		}break;
-		default:
-			break;
-		}
-		return 0;
+	//virtual size_t serialize(unsigned char *next, size_t size) = 0;
+	//virtual size_t unserialize(const unsigned char *next, size_t size) = 0;
+	void refresh() {}
+	size_t size() { return 0; }
+	size_t serialize(T *entity, unsigned char *nex, size_t size) {
+		next = nex; end = next + size; 
+		IMPL_SERIALIZE(entity);
+		return next - nex;
 	}
-	size_t unserialize(const unsigned char *next, size_t size, uint8_t mode = MODE_NO) {
-		switch (mode)
-		{
-		case MODE_NO: {
-			return unserialize_(next, size);
-		}break;
-		case MODE_ID: {
-			return unserialize_with_ids_(next, size);
-		}break;
-		case MODE_TAG: {
-			return unserialize_with_tag_(next, size);
-		}break;
-		default:
-			break;
-		}
-		return 0;
+	size_t unserialize(T *entity, const unsigned char *nex, size_t size) {
+		unnext = nex; 
+		unend = unnext + size; 
+		IMPL_UNSERIALIZE(entity);
+		return unnext - nex;
 	}
-
-	void refresh() {
-		for (auto &field : proto_fields_) {
-			field->refresh();
-		}
+	static T instance() {
+		static T entity;
+		return entity;
 	}
-
-	size_t size() {
-		size_t size = 0;
-
-#ifdef _DEBUG
-		for (auto &field : proto_fields_) {
-			size += field->size();
-		}
-#else
-		for (auto iter = proto_fields_.begin(); iter != proto_fields_.end(); iter++) {
-			size += (*iter)->size();
-		}
-#endif // DEBUG
-		return size;
-	}
-private:
-	vector<field_base*> proto_fields_;
+protected:
+	unsigned char *next;
+	unsigned char *end;
+	const unsigned char *unnext;
+	const unsigned char *unend;
 };
