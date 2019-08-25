@@ -5,7 +5,7 @@
 #include <string>
 #include <stdarg.h>
 #include <functional>
-#include "varint.h"
+#include "varint2.h"
 #include "serializer.h"
 using namespace std;
 
@@ -16,13 +16,11 @@ typedef char id_type;
 #define SIZE_4_BYTE 4
 #define SIZE_8_BYTE 8
 
-#define MODE_ID 1
-#define MODE_TAG 2
-#define MODE_NO 3
-
-#define  PROPERTY_PRIVATE
-
-#ifdef PROPERTY_PRIVATE
+#define OP_SERIALIZE 1
+#define OP_UNSERIALIZE 2
+#define OP_SIZE 3
+#define OP_REFRESH 4
+#define OP_DEFAULT 5
 
 #ifdef USE_TAG
 #define OVERRIDE_OPERATER(ele,id,type,T1,T2)\
@@ -30,10 +28,20 @@ typedef char id_type;
 							inline void operater_##id(uint8_t o){\
 								switch (o)\
 								{\
-								case 1:{next+=serialize_tag_(next,id,type);next+=proto_field<T1,T2>::serialize_(&ele, next, end);}break;\
-								case 2:{size_t uns=unserialize_tag_(unnext,id,type);if(uns==1) {unnext+=uns;unnext+=proto_field<T1,T2>::unserialize_(&ele, unnext, unend);}else unnext+=uns;}break;\
-								case 3:{_size+=proto_field<T1,T2>::size_(&ele);}break;\
-								case 4:{_size+=(proto_field<T1,T2>::size_(&ele)+1);}break;\
+								case OP_SERIALIZE:{\
+									if (!proto_field<T1, T2>::is_default_(&ele)) {\
+										next += serialize_tag_(next, id, type);\
+										next += proto_field<T1, T2>::serialize_(&ele, next, end);\
+									}\
+								}break;\
+								case OP_UNSERIALIZE:{\
+									size_t uns=unserialize_tag_(unnext,id,type);\
+									if(uns==1) {unnext+=uns;unnext+=proto_field<T1,T2>::unserialize_(&ele, unnext, unend);}\
+									else unnext+=uns;\
+								}break;\
+								case OP_SIZE:{_size+=(proto_field<T1,T2>::size_(&ele)+1);}break;\
+								case OP_REFRESH:{proto_field<T1,T2>::refresh_(&ele);}break;\
+								case OP_DEFAULT:{if(!proto_field<T1,T2>::is_default_(&ele)){_is_default=false;return;}}break;\
 										default:break;\
 								}\
 							}
@@ -43,21 +51,22 @@ typedef char id_type;
 							inline void operater_##id(uint8_t o){\
 								switch (o)\
 								{\
-								case 1:{next+=proto_field<T1,T2>::serialize_(&ele, next, end);}break;\
-								case 2:{unnext+=proto_field<T1,T2>::unserialize_(&ele, unnext, unend);}break;\
-								case 3:{_size+=proto_field<T1,T2>::size_(&ele);}break;\
-								case 4:{_size+=(proto_field<T1,T2>::size_(&ele)+1);}break;\
+								case OP_SERIALIZE:{next+=proto_field<T1,T2>::serialize_(&ele, next, end);}break;\
+								case OP_UNSERIALIZE:{unnext+=proto_field<T1,T2>::unserialize_(&ele, unnext, unend);}break;\
+								case OP_SIZE:{_size+=proto_field<T1,T2>::size_(&ele);}break;\
+								case OP_REFRESH:{proto_field<T1,T2>::refresh_(&ele);}break;\
+								case OP_DEFAULT:{if(!proto_field<T1,T2>::is_default_(&ele)){_is_default=false;return;}}break;\
 										default:break;\
 								}\
 							}
 #endif // USE_TAG
 
-
+#ifdef USE_SET_GET
 
 #define NUMBER(TYPE,name,id,...) \
 						private:\
 							 TYPE name;\
-							OVERRIDE_OPERATER(name,id,WireType_Varint,TYPE,TYPE);\
+							 OVERRIDE_OPERATER(name,id,WireType_Varint,TYPE,TYPE);\
 						public:\
 							 void set_##name(TYPE name_v){ name=name_v;}\
 							 TYPE &get_##name(){return name;}
@@ -114,33 +123,46 @@ typedef char id_type;
 							 VAL_TYPE &get_##name(KEY_TYPE key){return name[key];}
 
 #else
-#define NSM(TYPE,name,id,...) \
+#define NUMBER(TYPE,name,id,...) \
 						public:\
 							 TYPE name;\
-                        private:\
-							 void set_##id(){set_field(&name,id,__VA_ARGS__);}\
+							 OVERRIDE_OPERATER(name,id,WireType_Varint,TYPE,TYPE);\
+
+#define STRING(TYPE,name,id,...) \
+						public:\
+							 TYPE name;\
+							 OVERRIDE_OPERATER(name,id,WireType_Length_Limited,TYPE,TYPE);\
+
+#define MSG(TYPE,name,id,...) \
+						public:\
+							 TYPE name;\
+							 OVERRIDE_OPERATER(name,id,WireType_Length_Limited,TYPE,TYPE);\
 
 #define ENUM(TYPE,name,id,...) \
-						private:\
+						public:\
 							 TYPE name;\
-                        private:\
-							 void set_##id(){set_enum_field<TYPE>(&name,id);}\
+							 OVERRIDE_OPERATER(name,id,WireType_Varint,TYPE,TYPE);\
+
+#define FIXED(TYPE,name,id,...) \
+						public:\
+							 TYPE::value_type name;\
+							 TYPE tt_##name{&name};\
+							 OVERRIDE_OPERATER(tt_##name,id,WireType_Varint,TYPE,TYPE);\
 
 #define VECTOR(TYPE,name,id,...) \
 						public:\
 							 vector<TYPE> name;\
-                        private:\
-							 void set_##id(){set_vector_field<TYPE>(id,&name);}\
+							 OVERRIDE_OPERATER(name,id,WireType_Length_Limited,TYPE,TYPE);\
 
 #define MAP(KEY_TYPE,VAL_TYPE,name,id,...) \
 						public:\
 							 map<KEY_TYPE,VAL_TYPE> name;\
-                        private:\
-							 void set_##id(){set_map_field<KEY_TYPE,VAL_TYPE>(id,&name);}
+							 OVERRIDE_OPERATER(name,id,WireType_Length_Limited,KEY_TYPE,VAL_TYPE);
+
 #endif
 
 #define MESSAGE(class_name)\
-	class class_name:public proto_base\
+	class class_name:public proto_base<class_name>\
 
 #define MESSAGE_(class_name,parent)\
 	class class_name:public parent\
@@ -149,22 +171,9 @@ typedef char id_type;
 
 #define CHECK_DEFAULT(data,default_value) if(data==default_value) return true;else return false;
 
-#define BIT8(name) uint8_t name[8] = { 0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01 };
-
 #define SERIALISE(entity,data,size) entity.serialize(&entity,data, size)
 
 #define UNSERIALISE(entity,data,size) entity.unserialize(&entity,data, size)
-
-
-//#define DEFINE_ALL_OPERATER()\
-//inline void operater_1(uint8_t o){};inline void operater_2(uint8_t o){};inline void operater_3(uint8_t o){};inline void operater_4(uint8_t o){};inline void operater_5(uint8_t o){};inline void operater_6(uint8_t o){};\
-//inline void operater_7(uint8_t o){};inline void operater_8(uint8_t o){};inline void operater_9(uint8_t o){};inline void operater_10(uint8_t o){};inline void operater_11(uint8_t o){};inline void operater_12(uint8_t o){};\
-//inline void operater_13(uint8_t o){};inline void operater_14(uint8_t o){};inline void operater_15(uint8_t o){};inline void operater_16(uint8_t o){};
-//
-//#define IMPL_OPERATER(entity, o)\
-//entity->operater_1(o); entity->operater_2(o); entity->operater_3(o); entity->operater_4(o); entity->operater_5(o); entity->operater_6(o); \
-//entity->operater_7(o); entity->operater_8(o); entity->operater_9(o); entity->operater_10(o); entity->operater_11(o); entity->operater_12(o); \
-//entity->operater_13(o); entity->operater_14(o); entity->operater_15(o); entity->operater_16(o);
 
 enum WireType
 {
@@ -178,7 +187,7 @@ struct fixed32
 {
 	typedef uint32_t value_type;
 	uint32_t *data;
-	static WireType type;// = WireType_Fix32;
+	static WireType type;
 };
 WireType fixed32::type = WireType_Fix32;
 
@@ -186,11 +195,11 @@ struct fixed64
 {
 	typedef uint64_t value_type;
 	uint64_t *data;
-	static WireType type;// = WireType_Fix64;
+	static WireType type;
 };
 WireType fixed64::type = WireType_Fix32;
 
-//template<class T>
+template<class T>
 class proto_base;
 
 class field_base {
@@ -278,9 +287,9 @@ public:
 		return SIZE_4_BYTE;
 	}
 #ifdef USE_TAG
-	inline static size_t serialize_(proto_base *data, unsigned char *dest, unsigned char *end) {
+	inline static size_t serialize_(proto_base<T1> *data, unsigned char *dest, unsigned char *end) {
 		T1 *entity = (T1*)data;
-		size_t size = entity->size_with_tag(entity);
+		size_t size = entity->size(entity);
 		OVERFLOW_CHECK(dest, end, varint_size(size));
 		unsigned char *next = dest;
 		next += varint_pack(size, next);
@@ -316,7 +325,7 @@ public:
 		return next - dest;
 	}
 #else
-	inline static size_t serialize_(proto_base *data, unsigned char *dest, unsigned char *end) {
+	inline static size_t serialize_(proto_base<T1> *data, unsigned char *dest, unsigned char *end) {
 		T1 *entity = (T1*)data;
 		return entity->serialize(entity, dest, end - dest);
 	}
@@ -428,7 +437,7 @@ public:
 		return SIZE_4_BYTE;
 	}
 #ifdef USE_TAG
-	inline static size_t unserialize_(proto_base *data, const unsigned char *dest, const unsigned char *end) {
+	inline static size_t unserialize_(proto_base<T1> *data, const unsigned char *dest, const unsigned char *end) {
 		T1 *entity = (T1*)data;
 		OVERFLOW_CHECK(dest, end, varint_scan(dest));
 		const unsigned char *next = dest;
@@ -468,7 +477,7 @@ public:
 		return next - dest;
 	}
 #else
-	inline static size_t unserialize_(proto_base *data, const unsigned char *dest, const unsigned char *end) {
+	inline static size_t unserialize_(proto_base<T1> *data, const unsigned char *dest, const unsigned char *end) {
 		T1 *entity = (T1*)data;
 		return entity->unserialize(entity, dest, end - dest);
 	}
@@ -547,10 +556,11 @@ public:
 	inline static size_t size_(fixed32 *data) {
 		return SIZE_4_BYTE;
 	}
-	inline static size_t size_(proto_base *data) {
+	inline static size_t size_(proto_base<T1> *data) {
 		T1 *entity = (T1*)data;
 		return entity->size(entity);
 	}
+#ifdef USE_TAG
 	inline static size_t size_(vector<T1> *data) {
 		size_t size = 0;
 		for (auto &ele : *data) {
@@ -568,6 +578,15 @@ public:
 		size += varint_size(size);
 		return size;
 	}
+#else
+	inline static size_t size_(vector<T1> *data) {
+		return data->size();
+	}
+	inline static size_t size_(map<T1, T2> *data) {
+		return data->size();
+	}
+#endif // USE_TAG
+
 #pragma endregion
 
 #pragma region is_default
@@ -615,8 +634,9 @@ public:
 		CHECK_DEFAULT(*(data->data), 0);
 		return false;
 	}
-	inline static bool is_default_(proto_base *data) {
-		CHECK_DEFAULT(data->size(), 0);
+	inline static bool is_default_(proto_base<T1> *data) {
+		T1 *entity = (T1*)data;
+		return entity->is_default(entity);
 	}
 	inline static bool is_default_(vector<T1> *data) {
 		CHECK_DEFAULT(data->size(), 0);
@@ -625,7 +645,6 @@ public:
 		CHECK_DEFAULT(data->size(), 0);
 	}
 #pragma endregion
-
 
 #pragma region refresh
 	inline static void refresh_(bool *data) {
@@ -670,8 +689,9 @@ public:
 	inline static void refresh_(fixed64 *data) {
 		*(data->data) = 0;
 	}
-	inline static void refresh_(proto_base *data) {
-		data->refresh();
+	inline static void refresh_(proto_base<T1> *data) {
+		T1 *entity = (T1*)data;
+		data->refresh(entity);
 	}
 	inline static void refresh_(vector<T1> *data) {
 		data->clear();
@@ -683,17 +703,13 @@ public:
 };
 
 
-//template<class T>
+template<class T>
 class proto_base
 {
 public:
 	~proto_base() {
-		//for (auto field : proto_fields_) {
-		//	delete field;
-		//}
 	}
 
-	//顶层值拷贝，meta信息保留，不进行拷贝
 	void operator=(const proto_base &c) {
 	}
 
@@ -735,41 +751,41 @@ protected:
 		}
 	}
 public:
-	template<class T>
 	size_t serialize(T *entity,unsigned char *nex, size_t size) {
-		next = nex; end = next + size;
-		IMPL_OPERATER(entity, 1);
+		next = nex; 
+		end = next + size;
+		IMPL_OPERATER(entity, OP_SERIALIZE);
 		return next - nex;
 	}
-	template<class T>
 	size_t unserialize(T *entity,const unsigned char *nex, size_t size) {
 		unnext = nex;
 		unend = unnext + size;
-		IMPL_OPERATER(entity, 2);
+		IMPL_OPERATER(entity, OP_UNSERIALIZE);
 		return unnext - nex;
 	}
-	template<class T>
 	size_t size(T *entity) {
 		_size = 0;
-		IMPL_OPERATER(entity, 3);
+		IMPL_OPERATER(entity, OP_SIZE);
 		return _size;
 	}
-	template<class T>
-	size_t size_with_tag(T *entity) {
-		_size = 0;
-		IMPL_OPERATER(entity, 4);
-		return _size;
-	}
-	template<class T>
 	static T &instance() {
 		static T entity;
 		return entity;
 	}
-	void refresh() {}
+	void refresh(T *entity) {
+		IMPL_OPERATER(entity, OP_REFRESH);
+	}
+
+	bool is_default(T *entity) {
+		_is_default = true;
+		IMPL_OPERATER(entity, OP_DEFAULT);
+		return _is_default;
+	}
 protected:
 	unsigned char *next;
 	unsigned char *end;
 	const unsigned char *unnext;
 	const unsigned char *unend;
 	size_t _size;
+	bool _is_default;
 };
