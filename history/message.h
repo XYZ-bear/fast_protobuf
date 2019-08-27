@@ -1,110 +1,180 @@
 #pragma once
 
-#include "proto_base5.h"
+#include "proto_base9.h"
 
 
-MESSAGE_BEGIN(rigist)
-NSM(int, tt, 1);
-END
-#define and ,
-#define fd(type,name) type name;
+//MESSAGE(rigist) {
+//	NSM(int, tt, 1);
+//};
+//
+//MESSAGE(login2) {
+//	NSM(int32_t, i1, 1);
+//	NSM(int64_t, thh, 2);
+//	NSM(string, str, 3);
+//	NSM(rigist, ttt, 4);
+//	MAP(int, int, kkkk, 5);
+//	VECTOR(rigist, vvv, 6);
+//};
+//
+//MESSAGE(Test) {
+//	NSM(string, str, 1);
+//	NSM(int64_t, int64, 2);
+//	NSM(int32_t, int32, 3);
+//	NSM(uint32_t, uint32, 4);
+//	NSM(int32_t, sint32, 5);
+//	NSM(int64_t, sint64, 6);
+//	//NSM(double, fix64, 7);
+//	//NSM(float, fix32, 8);
+//	NSM(double, doub, 9);
+//	NSM(float, flo, 10);
+//	NSM(bool, boo, 11);
+//	//MAP(int, int, mapp, 12);
+//	VECTOR(int32_t, vec, 13);
+//	NSM(rigist, rig, 14);
+//	NSM(uint64_t, uint64, 15);
+//	FIXED(fixed32, fi32, 16);
+//	FIXED(fixed64, fi64, 17);
+//};
+//
+//MESSAGE(Test1) {
+//	NSM(string, str, 1);
+//	NSM(int64_t, int64, 2);
+//	NSM(int32_t, int32, 3);
+//	NSM(uint32_t, uint32, 4);
+//	NSM(int32_t, sint32, 5);
+//	NSM(int64_t, sint64, 6);
+//	NSM(double, fix64, 7);
+//	NSM(float, fix32, 8);
+//	NSM(double, doub, 9);
+//	NSM(float, flo, 10);
+//	NSM(bool, boo, 11);
+//	MAP(int, int, mapp, 12);
+//	VECTOR(int32_t, vec, 13);
+//	NSM(rigist, rig, 14);
+//	NSM(uint64_t, uint64, 15);
+//	FIXED(fixed32, fi32, 16);
+//	FIXED(fixed64, fi64, 17);
+//};
+//
+//MESSAGE_(Test2,Test) {
+//	NSM(string, str2, 1);
+//};
 
-
-
-MESSAGE_BEGIN(login2)
-NSM(int32_t, i1, 1);
-NSM(int64_t, thh, 2);
-NSM(string, str, 3);
-NSM(rigist, ttt, 4);
-MAP(int, int, kkkk, 5);
-VECTOR(rigist, vvv, 6);
-END
-
-MESSAGE_BEGIN(Test)
-NSM(string, str, 1);
-NSM(int64_t, int64, 2);
-NSM(int32_t, int32, 3);
-NSM(uint32_t, uint32, 4);
-NSM(int32_t, sint32, 5);
-NSM(int64_t, sint64, 6);
-NSM(double, fix64, 7);
-NSM(float, fix32, 8);
-NSM(double, doub, 9);
-NSM(float, flo, 10);
-NSM(bool, boo, 11);
-MAP(int, int, mapp, 12);
-VECTOR(int32_t, vec, 13);
-NSM(rigist, rig, 14);
-NSM(uint64_t, uint64, 15);
-END
-
-class Test2 :public rigist {
-public:
-	Test2() { DO_PRE_SET(); }
-	Test2(const Test2 & c) { *this = c; DO_PRE_SET(); }
-	NSM(uint64_t, uint64, 1);
+MESSAGE(rigist) {
+	int(int, tt, 1);
 };
+
+MESSAGE(login2) {
+	int(int32_t, i1, 1);
+	int(int64_t, thh, 2);
+	string(str, 3);
+	msg(rigist, ttt, 4);
+	map(int, int, kkkk, 5);
+	vector(rigist, vvv, 6);
+};
+
+MESSAGE(Test) {
+	//STRING(string, str, 1);
+	//NUMBER(int64_t, int64, 2);
+	//NUMBER(int32_t, int32, 3);
+	//NUMBER(uint32_t, uint32, 4);
+	//NUMBER(int32_t, sint32, 5);
+	//NUMBER(int64_t, sint64, 6);
+	//DOUBLE(double, doub, 9);
+	//FLOAT(float, flo, 10);
+	//NUMBER(bool, boo, 11);
+	////MAP(int, int, mapp, 12);
+	//VECTOR(int32_t, vec, 13);
+	//MSG(rigist, rig, 14);
+	//NUMBER(uint64_t, uint64, 15);
+	//FIXED(fixed32, fi32, 16);
+	//FIXED(fixed64, fi64, 17);
+public:
+	enum ttten
+	{
+		Hello=-100,
+		Bitch = 100,
+	};
+	string( str, 1);
+	int(int64_t, int64, 2);
+	int(int32_t, int32, 3);
+	int(uint32_t, uint32, 4);
+	int(int32_t, sint32, 5);
+	int(int64_t, sint64, 6);
+	double(doub, 9);
+	float(flo, 10);
+	int(bool, boo, 11);
+	map(int, int, mapp, 12);
+	vector(int32_t, vec, 13);
+	msg(rigist, rig, 14);
+	int(uint64_t, uint64, 15);
+	fixed(fixed32, fi32, 16);
+	fixed(fixed64, fi64, 17);
+	enum(ttten, ttte, 18);
+};
+
+MESSAGE(Test2) {
+	string(str, 1);
+	int(int32_t, int32, 3);
+	int(uint32_t, uint32, 4);
+	int(int32_t, sint32, 5);
+	int(int64_t, sint64, 6);
+	double(doub, 9);
+	float(flo, 10);
+	int(bool, boo, 11);
+	vector(int32_t, vec, 13);
+	msg(rigist, rig, 14);
+	int(uint64_t, uint64, 15);
+	fixed(fixed32, fi32, 16);
+	fixed(fixed64, fi64, 17);
+	unordered_map(int, int, unmapp, 18);
+	set(int, sset, 19);
+};
+
+
+MESSAGE_(Test3,Test) {
+	string(str2 , 18);
+};
+
+MESSAGE(Test4) {
+	map(int, vector<int>, tt, 1);
+};
+//MESSAGE_(Test2, Test) {
+//	STRING(string, str2, 1);
+//};
 
 class funct {
 public:
-	int a;
 	funct() {
-		count = []()->void {
-			int a = 0;
-			a++;
-		};
-		count2 = [this]()->void {
-			a++;
-		};
 	}
-protected:
-	virtual void ccm() {
+	void ccm() {
+		int a = 0;
+		a++;
 	}
-	virtual void ccm2() {
+	void ccm(int h) {
+		int a = 0;
+		a++;
+	}
+	void ccm(float h) {
+		int a = 0;
+		a++;
+	}
+	void fj(int type) {
+		if (type == 1)
+			ccm(1);
+		else if (type == 2)
+			ccm(1.22f);
 	}
 	function<void()> count;
-	function<void()> count2;
+	using aa = int;
 };
 
-#define DO_PRE_SET2() \
-		ccm();\
-ccm2();
-
-class funct2:public proto_base {
+class funct2:public funct {
 public:
-	int a;
 	funct2() {
-		ccm();
-		ccm2();
 	}
-protected:
-	void ccm() {
-	}
-	void ccm2() {
-	}
-};
-
-class funct3 :public proto_base {
-public:
-	funct3() {
-		ccm();
-		ccm2();
-	}
-protected:
-	void ccm() {
-	}
-	void ccm2() {
-	}
-};
-
-class funct4 :public funct2,funct3 {
-public:
-	funct4() {
-		DO_PRE_SET2();
-	}
-protected:
-	void ccm() {
-	}
-	void ccm2() {
+	 void ccm() {
+		int a = 0;
+		a++;
 	}
 };
