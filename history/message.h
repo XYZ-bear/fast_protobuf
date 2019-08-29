@@ -1,6 +1,7 @@
 #pragma once
 #include "option.h"
 
+
 //MESSAGE(rigist) {
 //	NSM(int, tt, 1);
 //};
@@ -58,21 +59,11 @@
 //	NSM(string, str2, 1);
 //};
 
-#define _ ,
-
 MESSAGE(rigist) {
 	ele(int, tt, 1);
 };
 
-MESSAGE(login2) {
-	ele(int32_t, i1, 1);
-	ele(int64_t, thh, 2);
-	ele(string,str, 3);
-	ele(rigist, ttt, 4);
-	ele_map(int,int, kkkk, 5);
-	ele(rigist, vvv, 6);
-};
-
+#define _ ,
 
 MESSAGE(Test) {
 	//STRING(string, str, 1);
@@ -96,24 +87,22 @@ public:
 		Hello=-100,
 		Bitch = 100,
 	};
-
 	ele(string, str, 1);
 	ele(int64_t, int64, 2);
 	ele(int32_t, int32, 3);
 	ele(uint32_t, uint32, 4);
 	ele(int32_t, sint32, 5);
 	ele(int64_t, sint64, 6);
-	ele(double, doub, 9);
+	ele(double,doub, 9);
 	ele(float,flo, 10);
 	ele(bool, boo, 11);
-	ele_map(int, int, mapp, 12);
+	ele(map<int, int>, mapp, 12);
 	ele(vector<int32_t>, vec, 13);
 	ele(rigist, rig, 14);
 	ele(uint64_t, uint64, 15);
 	ele(fixed32, fi32, 16);
 	ele(fixed64, fi64, 17);
-	ele_enum(ttten, ttte, 18);
-	ele_enum(ttten, ennene, 19);
+	ele(enumm<ttten>, ttte, 18);
 };
 
 MESSAGE(Test2) {
@@ -131,62 +120,19 @@ MESSAGE(Test2) {
 	ele(double, doub, 9);
 	ele(float, flo, 10);
 	ele(bool, boo, 11);
-	ele_map(int, int, mapp, 12);
+	ele(map<int, int>, mapp, 12);
 	ele(vector<int32_t>, vec, 13);
 	ele(rigist, rig, 14);
 	ele(uint64_t, uint64, 15);
 	ele(fixed32, fi32, 16);
 	ele(fixed64, fi64, 17);
-	ele_enum(ttten, ttte, 18);
+	ele(enumm<ttten>, ttte, 18);
+	//ele(map<int, vector<int>>, hhha, 19);
 };
 
 
 MESSAGE(Test4) {
-	ele_map(int, vector<int>, tt, 1);
-};
-
-
-MESSAGE(Test5) {
-	enum ttten
-	{
-		Hello = -100,
-		Bitch = 100,
-	};
-	ele(int, intt, 1);
-	ele(vector<int>, vvc, 4);
-	ele(map<int _ int>, mmp, 5);
-	ele(unordered_map<int _ int>, unmmp, 6);
-	ele(bool, flo, 10);
-	ele(int, boo, 11);
-	ele(rigist, rig, 14);
-	ele(uint64_t, uint64, 15);
-	ele(unordered_map<int _ vector<int>>, mv, 16);
-	ele(string, str, 17);
-	//ele(ttten, tttttt, 18);
-};
-
-MESSAGE(Test6) {
-	enum ttten
-	{
-		Hello = -100,
-		Bitch = 100,
-	};
-	ele(string, str, 1);
-	ele(int64_t, int64, 2);
-	ele(int32_t, int32, 3);
-	ele(uint32_t, uint32, 4);
-	ele(int32_t, sint32, 5);
-	ele(int64_t, sint64, 6);
-	ele(double, doub, 9);
-	ele(float, flo, 10);
-	ele(bool, boo, 11);
-	ele_map(int, int, mapp, 12);
-	ele(vector<int32_t>, vec, 13);
-	ele(rigist, rig, 14);
-	ele(uint64_t, uint64, 15);
-	ele(fixed32, fi32, 16);
-	ele(fixed64, fi64, 17);
-	ele_enum(ttten, ttte, 18);
+	//map(int, vector<int>, tt, 1);
 };
 //MESSAGE_(Test2, Test) {
 //	STRING(string, str2, 1);

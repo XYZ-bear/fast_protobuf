@@ -1,8 +1,8 @@
 #pragma once
 
-#define USE_SET_GET
+//#define USE_SET_GET
 #define USE_TAG
-//#define GENERATE_CODE
+#define GENERATE_CODE
 
 #ifdef GENERATE_CODE
 #include "collector.h"

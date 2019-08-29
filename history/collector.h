@@ -10,23 +10,33 @@
 #include "serializer.h"
 using namespace std;
 
+#ifdef UNION_TYPE3
+#undef UNION_TYPE3
+#endif
+
+#ifdef UNION_TYPE4
+#undef UNION_TYPE4
+
+#endif
 #define MESSAGE(class_name) class class_name:public message<class_name>
 
-#define ele(Type,name,id) \
+#define UNION_TYPE3(t1, name, id) \
 public:\
 	inline void operater_##id(uint8_t o){\
         get_instance();\
-        Type *val=nullptr;\
-		collector::get_instance().set_field(class_name,cshrap_type_map::type(val,#Type),#name,id);\
+        t1 *val=nullptr;\
+		collector::get_instance().set_field(class_name,cshrap_type_map::type(val,#t1),#name,id);\
 	}
 
-#define ele_enum(type,name,id) ele(enum_base<type>,name,id)
+#define UNION_TYPE4(t1, t2, name, id) \
+public:\
+	inline void operater_##id(uint8_t o){\
+        get_instance();\
+        t1,##t2 *val=nullptr;\
+		collector::get_instance().set_field(class_name,cshrap_type_map::type(val,""),#name,id);\
+	}
 
-#define ele_map(KEY_TYPE,VAL_TYPE,name,id) \
-ele(map<KEY_TYPE _ VAL_TYPE>,name,id)
-
-#define ele_unordered_map(KEY_TYPE,VAL_TYPE,name,id) \
-ele(unordered_map<KEY_TYPE _ VAL_TYPE>, name, id)
+#define ele(...) INVOKE_VAR_MACRO(UNION_TYPE, __VA_ARGS__)
 
 class cshrap_type_map;
 
@@ -82,13 +92,8 @@ public:
 	inline static string type(T *data, string name = "") {
 		return name;
 	}
-
 	template<class T>
-	inline static string type(enum_base<T> *data, string name = "") {
-		return name;
-	}
-	template<class T1>
-	inline static string type(message<T1> *data, string name = "") {
+	inline static string type(enumm<T> *data, string name = "") {
 		return name;
 	}
 	template<class T1>
