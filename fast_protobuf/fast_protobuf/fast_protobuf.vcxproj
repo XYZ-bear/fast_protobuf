@@ -23,7 +23,7 @@
     <ProjectGuid>{B03F4B12-DD19-4DB6-9E59-FCC38F2A46BA}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>fastprotobuf</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -99,7 +99,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
@@ -158,7 +158,10 @@
     <ClInclude Include="fast_common.h" />
     <ClInclude Include="fast_field.h" />
     <ClInclude Include="fast_protobuf.h" />
+    <ClInclude Include="fast_protobuf_256.h" />
+    <ClInclude Include="fast_protobuf_unlimit.h" />
     <ClInclude Include="message.h" />
+    <ClInclude Include="message2.h" />
     <ClInclude Include="operater.h" />
     <ClInclude Include="varint.h" />
   </ItemGroup>

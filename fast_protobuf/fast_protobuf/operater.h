@@ -1,11 +1,5 @@
 #pragma once
 
-#define OP_SERIALIZE 1
-#define OP_UNSERIALIZE 2
-#define OP_SIZE 3
-#define OP_REFRESH 4
-#define OP_DEFAULT 5
-
 #define DEFINE_ALL_OPERATER()\
 inline void operater_1(uint8_t o) {};inline void operater_2(uint8_t o) {};inline void operater_3(uint8_t o) {};inline void operater_4(uint8_t o) {};\
 inline void operater_5(uint8_t o) {};inline void operater_6(uint8_t o) {};inline void operater_7(uint8_t o) {};inline void operater_8(uint8_t o) {};\

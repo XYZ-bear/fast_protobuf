@@ -41,5 +41,14 @@
     <ClInclude Include="operater.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="fast_protobuf_256.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="fast_protobuf_unlimit.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="message2.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

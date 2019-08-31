@@ -18,6 +18,13 @@
 	//#define USE_TAG
     //--------------------------------------------------------------------------
 
+
+	#define OP_SERIALIZE 1
+	#define OP_UNSERIALIZE 2
+	#define OP_SIZE 3
+	#define OP_REFRESH 4
+	#define OP_DEFAULT 5
+
 	#include "fast_protobuf_256.h"
 	#include "fast_protobuf_unlimit.h"
 
